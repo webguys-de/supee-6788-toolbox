@@ -113,6 +113,10 @@ class Mage_Shell_PatchClass extends Mage_Shell_Abstract
             $whitelist = new TemplateVars();
             $whitelist->execute();
 
+        } elseif (!is_null($this->_args['fixWhitelist'])) {
+
+            $whitelist = new TemplateVars();
+            $whitelist->execute(true);
 
         } else {
             echo $this->usageHelp();
@@ -130,6 +134,7 @@ class Mage_Shell_PatchClass extends Mage_Shell_Abstract
 Usage:  php -f fixSUPEE6788.php -- [options] [recordAffected]
   checkAll          Analyze Magento install for SUPEE-6788 conflicts
   checkWhitelist    Analyze Magento install for SUPEE-6788 whitelist conflicts
+  fixWhitelist      Fix Magento install for SUPEE-6788 whitelist conflicts
 
 USAGE;
     }
@@ -567,7 +572,7 @@ class TemplateVars
     /**
      * @return void
      */
-    public function execute()
+    public function execute($insert = false)
     {
         $cmsBlockTable = $this->_resource->getTableName('cms/block');
         $cmsPageTable = $this->_resource->getTableName('cms/page');
@@ -624,6 +629,38 @@ class TemplateVars
 
             foreach ($list['variable'] as $key => $varName) {
                 Mage_Shell_PatchClass::log($varName);
+            }
+        }
+
+        if ($insert === true) {
+            if (count($list['block']) > 0) {
+                $inserts = array();
+
+                foreach ($list['block'] as $key => $blockName) {
+                    $inserts[$blockName] = array(
+                        'block_name' => $blockName,
+                        'is_allowed' => 1,
+                    );
+                }
+
+                if (!is_null($this->_blocksTable) && count($inserts) > 0) {
+                    $this->_write->insertMultiple($this->_blocksTable, array_values($inserts));
+                }
+            }
+
+            if (count($list['variable']) > 0) {
+                $inserts = array();
+
+                foreach ($list['variable'] as $key => $varName) {
+                    $inserts[$varName] = array(
+                        'variable_name' => $varName,
+                        'is_allowed' => 1,
+                    );
+                }
+
+                if (!is_null($this->_varsTable) && count($inserts) > 0) {
+                    $this->_write->insertMultiple($this->_varsTable, array_values($inserts));
+                }
             }
         }
     }
